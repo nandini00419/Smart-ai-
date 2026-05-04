@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Learning Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 24px;
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      text-align: center;
+      color: #4b5563;
+      margin-top: 0;
+      margin-bottom: 24px;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+      color: #1f2937;
+    }
+
+    input,
+    textarea,
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      font-size: 16px;
+    }
+
+    button {
+      background-color: #3b82f6;
+      color: #ffffff;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    button:disabled {
+      background-color: #93c5fd;
+      cursor: not-allowed;
+    }
+
+    .status {
+      font-size: 14px;
+      color: #4b5563;
+      min-height: 20px;
+    }
+
+    pre {
+      background: #f3f4f6;
+      padding: 15px;
+      border-radius: 12px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 14px;
+      min-height: 200px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      flex: 1;
+    }
+
+    .modules-grid {
+      display: grid;
+      gap: 16px;
+      margin: 20px 0 10px;
+    }
+
+    @media (min-width: 640px) {
+      .modules-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .module-card {
+      border: 1px solid #d1d5db;
+      border-radius: 16px;
+      padding: 16px;
+      background: #f9fafb;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+    }
+
+    .module-card:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+    }
+
+    .module-card h4 {
+      margin: 0 0 8px;
+      color: #1f2937;
+    }
+
+    .module-card p {
+      margin: 4px 0;
+      color: #4b5563;
+      font-size: 14px;
+    }
+
+    .guide {
+      margin: 30px 0;
+      padding: 16px;
+      border-radius: 16px;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+    }
+
+    .guide h3 {
+      margin-top: 0;
+      color: #312e81;
+    }
+
+    .guide ol {
+      padding-left: 18px;
+      color: #4338ca;
+    }
+
+    .guide li {
+      margin: 8px 0;
+      color: #1f2937;
+    }
+
+    .guide small {
+      display: inline-block;
+      margin-top: 8px;
+      color: #4b5563;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI Learning Dashboard</h1>
+    <p class="subtitle">Deep Learning mentor for concepts, code, and projects</p>
+
+    <label for="topic">Enter Topic or Project:</label>
+    <input
+      type="text"
+      id="topic"
+      placeholder="E.g., Attention Seq2Seq, DQN CartPole, Vision Transformers"
+    />
+
+    <div class="actions">
+      <button id="askButton">Ask AI</button>
+      <button id="sampleButton" type="button">Use Sample Topic</button>
+    </div>
+
+    <h3>Quick Module Picker</h3>
+    <p class="status helper-text">
+      Click a module to autofill a tailored prompt for that workflow.
+    </p>
+    <div class="modules-grid" id="modulesGrid"></div>
+
+    <p class="status" id="status"></p>
+
+    <section class="guide">
+      <h3>How this mentor helps</h3>
+      <ol>
+        <li>Pick a module or type any topic you want to study.</li>
+        <li>The mentor explains the idea, shows diagrams, code, and a mini project.</li>
+        <li>You get practical tips plus a quick Q&A invite for follow-up questions.</li>
+      </ol>
+      <small>Simple language, six numbered sections, and runnable Python every time.</small>
+    </section>
+
+    <h3>AI Response:</h3>
+    <pre id="response"></pre>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:5000/api/mentor';
+    const askButton = document.getElementById('askButton');
+    const sampleButton = document.getElementById('sampleButton');
+    const topicInput = document.getElementById('topic');
+    const responseEl = document.getElementById('response');
+    const statusEl = document.getElementById('status');
+    const modulesGrid = document.getElementById('modulesGrid');
+
+    const sampleTopics = [
+      'Build a CNN for CIFAR-10',
+      'Implement PPO for CartPole',
+      'Explain Vision Transformers',
+      'Train a Conditional GAN',
+      'Optimize a Transformer for translation'
+    ];
+
+    const modules = [
+      {
+        title: 'Seq2Seq + Attention',
+        concept: 'Sequence-to-sequence models with attention',
+        example: 'Google Translate',
+        prompt:
+          'Seq2Seq with attention for translation: explain encoder/decoder, attention math, provide PyTorch seq2seq code, evaluation tips, and pitfalls.'
+      },
+      {
+        title: 'Transformers (T5)',
+        concept: 'Pretrained model for text tasks',
+        example: 'Summarizing news articles',
+        prompt:
+          'Fine-tune T5 for abstractive news summarization using Hugging Face, include dataset prep, training loop, evaluation metrics, and deployment ideas.'
+      },
+      {
+        title: 'Autoencoder',
+        concept: 'Detect unusual data',
+        example: 'Fraud detection or server log monitoring',
+        prompt:
+          'Autoencoder anomaly detector for transaction logs: cover architecture, reconstruction error thresholds, PyTorch code, and validation strategy.'
+      },
+      {
+        title: 'Reinforcement Learning',
+        concept: 'Agent learning to take actions',
+        example: 'Video game AI or robot navigation',
+        prompt:
+          'Train a PPO agent for robot navigation: explain policy/value networks, provide Stable-Baselines3 code, reward shaping advice, and testing steps.'
+      }
+    ];
+
+    function setStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    function setResponse(message) {
+      responseEl.textContent = message;
+    }
+
+    async function requestMentorGuide(topic) {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Backend error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      if (!data?.content) {
+        throw new Error('Backend returned an empty response.');
+      }
+      return data.content;
+    }
+
+    async function handleAsk() {
+      const topic = topicInput.value.trim();
+      if (!topic) {
+        alert('Please enter a topic!');
+        return;
+      }
+
+      askButton.disabled = true;
+      setStatus('Generating response, please wait...');
+      setResponse('Loading...');
+
+      try {
+        const aiResponse = await requestMentorGuide(topic);
+        setResponse(aiResponse);
+        setStatus('Done!');
+      } catch (error) {
+        console.error(error);
+        setResponse('Something went wrong. Check the console for more details.');
+        setStatus(error.message);
+      } finally {
+        askButton.disabled = false;
+      }
+    }
+
+    askButton.addEventListener('click', handleAsk);
+
+    sampleButton.addEventListener('click', () => {
+      const suggestion = sampleTopics[Math.floor(Math.random() * sampleTopics.length)];
+      topicInput.value = suggestion;
+      topicInput.focus();
+    });
+
+    topicInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        handleAsk();
+      }
+    });
+
+    function renderModules() {
+      modulesGrid.innerHTML = modules
+        .map(
+          (module) => `
+          <article class="module-card" data-prompt="${module.prompt.replace(/"/g, '&quot;')}">
+            <h4>${module.title}</h4>
+            <p><strong>Concept:</strong> ${module.concept}</p>
+            <p><strong>Real-world:</strong> ${module.example}</p>
+          </article>
+        `
+        )
+        .join('');
+
+      modulesGrid.querySelectorAll('.module-card').forEach((card) => {
+        card.addEventListener('click', () => {
+          topicInput.value = card.dataset.prompt;
+          topicInput.focus();
+          handleAsk();
+        });
+      });
+    }
+
+    renderModules();
+  </script>
+</body>
+</html>
+
